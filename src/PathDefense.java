@@ -5,6 +5,8 @@ import java.util.List;
 
 public class PathDefense {
 
+	private static final int MAX_TOWER_RANGE = 5;
+	private int rangeList[][] = new int[MAX_TOWER_RANGE + 1][];
 	private int N, N2, money, creepHealth, creepMoney;
 	private boolean put[], base[];
 	private TowerType type[], best;
@@ -106,13 +108,34 @@ public class PathDefense {
 			if (put[i]) {
 				int value = 0;
 				for (int j = 0; j < N2; ++j)
-					if (!put[j] && !base[i] && best.range >= dist(i, j))
+					if (!put[j] && !base[i] && best.range >= dist(i, j)) {
 						value++;
+					}
 				canPut.add(new Position(i, value));
 			}
 		}
 		Collections.sort(canPut, (o1, o2) -> Integer.compare(o2.value, o1.value));
 		this.canPut = canPut.toArray(new Position[0]);
+
+		for (int range = 1; range <= MAX_TOWER_RANGE; ++range) {
+			int range2 = range * range;
+			List<Integer> list = new ArrayList<>();
+			for (int a = 1; dist(a, 0) <= range2; ++a) {
+				for (int b = 0;; b++) {
+					if (dist(0, pos(a, b)) <= range2) {
+						list.add(pos(a, b));
+						list.add(pos(a, -b));
+						list.add(pos(-a, b));
+						list.add(pos(-a, -b));
+					} else
+						break;
+				}
+			}
+			int res[] = new int[list.size()];
+			for (int i = 0; i < res.length; ++i)
+				res[i] = list.get(i);
+			rangeList[range] = res;
+		}
 
 		//		debug("board", board);
 		//		debug("money", money);
@@ -151,21 +174,52 @@ public class PathDefense {
 		//		debug("money", money);
 		//		debug("baseHealth", baseHealth);
 
-		int allIncome = creeps.length * creepMoney;
 		List<Tower> res = new ArrayList<>();
 		while (true) {
 			for (Creep c : creeps)
 				c.init();
 			Creep tmp[] = Arrays.copyOf(creeps, creeps.length);
-			int sum = 0;
+			List<Creep> goalCreep = new ArrayList<>();
 			while (true) {
-				tmp = updateCreeps(tmp);
-				if (tmp.length == 0)
+				tmp = updateCreeps(tmp, goalCreep);
+				if (tmp.length == 0 || !goalCreep.isEmpty())
 					break;
-				sum += updateAttack(tmp, towers);
+				updateAttack(tmp, towers);
 			}
-			if (sum < allIncome && money >= best.cost) {
-				Tower add = new Tower(canPut[towers.size()].pos, best);
+			if (!goalCreep.isEmpty() && money >= best.cost) {
+				int index = -1;
+				int rl[] = rangeList[best.range1];
+				for (Creep c : goalCreep) {
+					int pos = c.ip;
+					if (next[pos] == -1) {
+						debug("ok");
+						continue;
+					}
+					int routeRange[] = new int[N2];
+					while (next[pos] != -1) {
+						pos = next[pos];
+						for (int i : rl) {
+							int j = pos + i;
+							if (0 <= j && j < N2 && dist(pos, j) <= best.range)
+								++routeRange[j];
+						}
+					}
+					for (int i = 0; i < canPut.length; ++i) {
+						Position p = canPut[i];
+						if (index == -1
+								|| routeRange[canPut[index].pos] * 10 + canPut[index].value < routeRange[p.pos] * 10
+										+ p.value) {
+							index = i;
+						}
+					}
+					if (index != -1)
+						break;
+				}
+				if (index == -1)
+					break;
+				Tower add = new Tower(canPut[index].pos, best);
+				canPut = remove(canPut, index);
+				// Tower add = new Tower(canPut[towers.size()].pos, best);
 				towers.add(add);
 				res.add(add);
 				money -= best.cost;
@@ -187,12 +241,16 @@ public class PathDefense {
 		return x;
 	}
 
-	Creep[] updateCreeps(Creep creeps[]) {
+	Creep[] updateCreeps(Creep creeps[], List<Creep> goalCreep) {
 		Creep tmp[] = new Creep[creeps.length];
 		int i = 0;
 		for (Creep c : creeps) {
-			if (c.health <= 0 || next[c.pos] == -1)
+			if (c.health <= 0)
 				continue;
+			if (next[c.pos] == -1) {
+				goalCreep.add(c);
+				continue;
+			}
 			c.pos = next[c.pos];
 			tmp[i++] = c;
 		}
@@ -262,11 +320,12 @@ public class PathDefense {
 	}
 
 	private class TowerType {
-		final int id, range, damage, cost;
+		final int id, range1, range, damage, cost;
 		final double value;
 
 		TowerType(int id, int range, int damage, int cost) {
 			this.id = id;
+			this.range1 = range;
 			this.range = range * range;
 			this.damage = damage;
 			this.cost = cost;
@@ -288,5 +347,13 @@ public class PathDefense {
 
 	private static void debug(Object... obj) {
 		System.err.println(Arrays.deepToString(obj));
+	}
+
+	private final <T> T[] remove(T[] src, int i) {
+		T[] res = Arrays.copyOf(src, src.length - 1);
+		if (i == src.length - 1)
+			return res;
+		res[i] = src[src.length - 1];
+		return res;
 	}
 }

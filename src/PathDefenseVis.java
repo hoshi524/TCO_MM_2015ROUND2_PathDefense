@@ -298,7 +298,8 @@ class TestCase {
 					creeps[wi].x = spawnX[wavePath];
 					creeps[wi].y = spawnY[wavePath];
 					creeps[wi].spawnTime = waveStartT + rnd.nextInt(waveSize);
-					creeps[wi].health = creepType.health;
+					// creeps[wi].health = creepType.health;
+					creeps[wi].health = creepType.health * (1 << (creeps[wi].spawnTime / 500));
 					wi++;
 				}
 				if (wi >= creepCnt)
