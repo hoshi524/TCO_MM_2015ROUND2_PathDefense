@@ -13,6 +13,9 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -626,16 +629,13 @@ class World {
 
 public class PathDefenseVis {
 	public static String execCommand = null;
-	public static long seed = 1;
 	public static boolean vis = true;
 	public static boolean debug = false;
 	public static int cellSize = 12;
-	public static int delay = 100;
+	public static int delay = 50;
 	public static boolean startPaused = false;
 
-	public int runTest() {
-		PathDefense solver = new PathDefense();
-
+	public int runTest(long seed, Solver solver) {
 		TestCase tc = new TestCase(seed);
 
 		// Board information
@@ -686,52 +686,45 @@ public class PathDefenseVis {
 					creeps[ci++] = c.y;
 				}
 
-			try {
-				int[] newTowers = solver.placeTowers(creeps, world.totMoney, world.baseHealth);
-				int commandCnt = newTowers.length;
-				if (commandCnt > tc.boardSize * tc.boardSize * 3) {
-					System.err.println("ERROR: Return array from placeTowers too large.");
-					return -1;
-				}
-				if ((commandCnt % 3) != 0) {
-					System.err.println("ERROR: Return array from placeTowers must be a multiple of 3.");
-					return -1;
-				}
-				if (commandCnt > 0) {
-					for (int i = 0; i < newTowers.length; i += 3) {
-						Tower newT = new Tower();
-						newT.x = newTowers[i];
-						newT.y = newTowers[i + 1];
-						newT.type = newTowers[i + 2];
-						if (newT.x < 0 || newT.x >= tc.boardSize || newT.y < 0 || newT.y >= tc.boardSize) {
-							System.err.println("ERROR: Placement (" + newT.x + "," + newT.y + ") outside of bounds.");
-							return -1;
-						}
-						if (tc.board[newT.y][newT.x] != '#') {
-							System.err.println("ERROR: Cannot place a tower at (" + newT.x + "," + newT.y + ").");
-							return -1;
-						}
-						if (newT.type < 0 || newT.type >= tc.towerTypeCnt) {
-							System.err.println("ERROR: Trying to place an illegal tower type.");
-							return -1;
-						}
-						if (world.totMoney < tc.towerTypes[newT.type].cost) {
-							System.err.println("ERROR: Not enough money to place tower. " + world.totMoney + " < "
-									+ tc.towerTypes[newT.type].cost + " " + newT.type);
-							return -1;
-						}
-						world.totMoney -= tc.towerTypes[newT.type].cost;
-						tc.board[newT.y][newT.x] = (char) ('A' + newT.type);
-						world.towers.add(newT);
-						world.numTowers++;
-						world.moneySpend += tc.towerTypes[newT.type].cost;
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.err.println("ERROR: time step = " + t + " (0-based). Unable to get the build commands"
-						+ " from your solution.");
+			int[] newTowers = solver.placeTowers(creeps, world.totMoney, world.baseHealth);
+			int commandCnt = newTowers.length;
+			if (commandCnt > tc.boardSize * tc.boardSize * 3) {
+				System.err.println("ERROR: Return array from placeTowers too large.");
 				return -1;
+			}
+			if ((commandCnt % 3) != 0) {
+				System.err.println("ERROR: Return array from placeTowers must be a multiple of 3.");
+				return -1;
+			}
+			if (commandCnt > 0) {
+				for (int i = 0; i < newTowers.length; i += 3) {
+					Tower newT = new Tower();
+					newT.x = newTowers[i];
+					newT.y = newTowers[i + 1];
+					newT.type = newTowers[i + 2];
+					if (newT.x < 0 || newT.x >= tc.boardSize || newT.y < 0 || newT.y >= tc.boardSize) {
+						System.err.println("ERROR: Placement (" + newT.x + "," + newT.y + ") outside of bounds.");
+						return -1;
+					}
+					if (tc.board[newT.y][newT.x] != '#') {
+						System.err.println("ERROR: Cannot place a tower at (" + newT.x + "," + newT.y + ").");
+						return -1;
+					}
+					if (newT.type < 0 || newT.type >= tc.towerTypeCnt) {
+						System.err.println("ERROR: Trying to place an illegal tower type.");
+						return -1;
+					}
+					if (world.totMoney < tc.towerTypes[newT.type].cost) {
+						System.err.println("ERROR: Not enough money to place tower. " + world.totMoney + " < "
+								+ tc.towerTypes[newT.type].cost + " " + newT.type);
+						return -1;
+					}
+					world.totMoney -= tc.towerTypes[newT.type].cost;
+					tc.board[newT.y][newT.x] = (char) ('A' + newT.type);
+					world.towers.add(newT);
+					world.numTowers++;
+					world.moneySpend += tc.towerTypes[newT.type].cost;
+				}
 			}
 
 			world.updateCreeps();
@@ -752,18 +745,22 @@ public class PathDefenseVis {
 		for (int b = 0; b < world.baseHealth.length; b++)
 			score += world.baseHealth[b];
 
-		System.err.println("Money = " + world.totMoney);
-		System.err.println("Total base health = " + (score - world.totMoney));
+		if (debug) {
+			System.err.println("Money = " + world.totMoney);
+			System.err.println("Total base health = " + (score - world.totMoney));
+		}
 
 		return score;
 	}
 
 	public static void main(String[] args) {
+		new PathDefenseVis().run(args);
+	}
+
+	void run(String[] args) {
 		for (int i = 0; i < args.length; i++)
 			if (args[i].equals("-exec")) {
 				execCommand = args[++i];
-			} else if (args[i].equals("-seed")) {
-				seed = Long.parseLong(args[++i]);
 			} else if (args[i].equals("-novis")) {
 				vis = false;
 			} else if (args[i].equals("-debug")) {
@@ -778,17 +775,99 @@ public class PathDefenseVis {
 				System.out.println("WARNING: unknown argument " + args[i] + ".");
 			}
 
-		vis = true;
-		int N = 10;
-		for (seed = 1; seed <= N; seed++) {
-			PathDefenseVis vis = new PathDefenseVis();
+		if (false) {
+			debug = true;
+			vis = true;
+			int N = 10;
 			try {
-				int score = vis.runTest();
-				System.out.println("Score = " + score);
-			} catch (RuntimeException e) {
+				for (long seed = 1; seed <= N; seed++) {
+					int score = runTest(seed, new Wrapper());
+					System.out.println("Score = " + score);
+				}
+			} catch (Exception e) {
 				System.err.println("ERROR: Unexpected error while running your test case.");
 				e.printStackTrace();
 			}
+		} else {
+			vis = false;
+			compare();
+		}
+	}
+
+	interface Solver {
+		int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes);
+
+		int[] placeTowers(int[] creep, int money, int[] baseHealth);
+	}
+
+	class Wrapper implements Solver {
+		CopyOfPathDefense solver = new CopyOfPathDefense();
+
+		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
+			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
+		}
+
+		public int[] placeTowers(int[] creep, int money, int[] baseHealth) {
+			return solver.placeTowers(creep, money, baseHealth);
+		}
+	}
+
+	class Wrapper2 implements Solver {
+		PathDefense solver = new PathDefense();
+
+		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
+			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
+		}
+
+		public int[] placeTowers(int[] creep, int money, int[] baseHealth) {
+			return solver.placeTowers(creep, money, baseHealth);
+		}
+	}
+
+	void compare() {
+		class ParameterClass {
+			volatile double d;
+			volatile int timeover;
+		}
+
+		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
+		ExecutorService es = Executors.newFixedThreadPool(4);
+
+		for (int seed = 1, size = seed + 100; seed < size; seed++) {
+			final int Seed = seed;
+			es.submit(() -> {
+				try {
+					PathDefenseVis vis = new PathDefenseVis();
+					long start0 = System.currentTimeMillis();
+					int score0 = vis.runTest(Seed, new Wrapper());
+					long end0 = System.currentTimeMillis();
+					long start1 = System.currentTimeMillis();
+					int score1 = vis.runTest(Seed, new Wrapper2());
+					long end1 = System.currentTimeMillis();
+					double max = Math.max(score0, score1);
+					if (score0 > 1 && score1 > 1) {
+						sum0.d += (double) score0 / max;
+						sum1.d += (double) score1 / max;
+					}
+					if ((end0 - start0) >= 20000)
+						sum0.timeover++;
+					if ((end1 - start1) >= 20000)
+						sum1.timeover++;
+					System.out.println(String.format("%3d   %5d : %5d    %5d : %5d    %.1f : %.1f   %d : %d", Seed,
+							score0, score1, (end0 - start0), (end1 - start1), sum0.d, sum1.d, sum0.timeover,
+							sum1.timeover));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+		}
+		try {
+			es.shutdown();
+			if (!es.awaitTermination(1000000L, TimeUnit.SECONDS))
+				es.shutdownNow();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			es.shutdownNow();
 		}
 	}
 }
