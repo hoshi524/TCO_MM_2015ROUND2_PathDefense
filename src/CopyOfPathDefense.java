@@ -144,8 +144,8 @@ public class CopyOfPathDefense {
 			if (put[i]) {
 				int value = 0;
 				for (int j = 0; j < N2; ++j)
-					if (!put[j] && !base[i] && best.range >= dist(i, j)) {
-						// value += posValue[j];
+					if (!put[j] && !base[j] && best.range >= dist(i, j)) {
+						//value += posValue[j];
 						++value;
 					}
 				canPut.add(new Position(i, value));

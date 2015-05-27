@@ -831,9 +831,9 @@ public class PathDefenseVis {
 		}
 
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
-		ExecutorService es = Executors.newFixedThreadPool(4);
+		ExecutorService es = Executors.newFixedThreadPool(6);
 
-		for (int seed = 1, size = seed + 100; seed < size; seed++) {
+		for (int seed = 1, size = seed + 500; seed < size; seed++) {
 			final int Seed = seed;
 			es.submit(() -> {
 				try {
