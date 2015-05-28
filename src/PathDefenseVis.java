@@ -775,10 +775,10 @@ public class PathDefenseVis {
 				System.out.println("WARNING: unknown argument " + args[i] + ".");
 			}
 
-		if (false) {
+		if (true) {
 			debug = true;
 			vis = true;
-			int N = 10;
+			int N = 1;
 			try {
 				for (long seed = 1; seed <= N; seed++) {
 					int score = runTest(seed, new Wrapper());
@@ -844,8 +844,8 @@ public class PathDefenseVis {
 					long start1 = System.currentTimeMillis();
 					int score1 = vis.runTest(Seed, new Wrapper2());
 					long end1 = System.currentTimeMillis();
-					double max = Math.max(score0, score1);
-					if (score0 > 1 && score1 > 1) {
+					int max = Math.max(score0, score1);
+					if (score0 > 1 || score1 > 1) {
 						sum0.d += (double) score0 / max;
 						sum1.d += (double) score1 / max;
 					}
