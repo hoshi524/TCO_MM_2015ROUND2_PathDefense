@@ -775,7 +775,7 @@ public class PathDefenseVis {
 				System.out.println("WARNING: unknown argument " + args[i] + ".");
 			}
 
-		if (true) {
+		if (false) {
 			debug = true;
 			vis = true;
 			int N = 1;
@@ -833,7 +833,7 @@ public class PathDefenseVis {
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
 		ExecutorService es = Executors.newFixedThreadPool(6);
 
-		for (int seed = 1, size = seed + 500; seed < size; seed++) {
+		for (int seed = 1, size = seed + 1000; seed < size; seed++) {
 			final int Seed = seed;
 			es.submit(() -> {
 				try {
