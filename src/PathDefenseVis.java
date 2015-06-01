@@ -779,7 +779,7 @@ public class PathDefenseVis {
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 306, N = 306; seed <= N; seed++) {
+				for (long seed = 875, N = 875; seed <= N; seed++) {
 					int score = runTest(seed, new Wrapper2());
 					System.out.println("Score = " + score);
 				}

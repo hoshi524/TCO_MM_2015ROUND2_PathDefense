@@ -12,7 +12,7 @@ public class CopyOfPathDefense {
 	private TowerType types[], best;
 	private Creep creeps[];
 	private int[] basep, base, baseIndex;
-	private int[] start, posValue, minBaseId;
+	private int[] start, routeCount, minBaseId, baseHealth;
 	private int[][] baseDist;
 	private Position canPut[];
 
@@ -24,7 +24,7 @@ public class CopyOfPathDefense {
 		Arrays.fill(base, -1);
 		int bc = 0, si = 0;
 		start = new int[N2];
-		posValue = new int[N2];
+		routeCount = new int[N2];
 		baseIndex = new int[10];
 		for (int i = 0; i < N2; ++i) {
 			int x = getX(i), y = getY(i);
@@ -119,7 +119,7 @@ public class CopyOfPathDefense {
 					int now = queue[qi++], next, y = getY(now);
 					if (base[now] >= 0)
 						continue;
-					++posValue[now];
+					++routeCount[now];
 					next = now + N;
 					if (next < N2 && func.isOK(now, next) && !used[next] && !put[next]) {
 						queue[qs++] = next;
@@ -237,9 +237,9 @@ public class CopyOfPathDefense {
 		}
 	}
 
-	List<Tower> towers = new ArrayList<>();
+	private final List<Tower> towers = new ArrayList<>();
 	// int testCount[];
-	int step = 0;
+	private int step = 0;
 
 	int[] placeTowers(int[] creep, int money, int[] baseHealth) {
 		{// input
@@ -249,10 +249,9 @@ public class CopyOfPathDefense {
 				// ++testCount[creeps[i / 4].pos];
 				// debug("creep", creeps[i / 4].id, creeps[i / 4].health);
 			}
+			Arrays.sort(this.creeps, (o1, o2) -> o1.id - o2.id);
 			this.money = money;
-			//			for (int i = 0; i < baseHealth.length; ++i)
-			//				if (baseHealth[i] <= 0)
-			//					base[baseIndex[i]] = -1;
+			this.baseHealth = baseHealth;
 			//			step++;
 			//			if (step == 1999) {
 			//				for (int i = 0; i < N; ++i) {
@@ -303,7 +302,7 @@ public class CopyOfPathDefense {
 							if (0 <= j && j < N2 && dist(pos, j) <= best.range) {
 								// ++routeRange[j];
 								routeRange[j] = Math.min(routeRange[j] + 1, (c.health + best.damage - 1) / best.damage);
-								routePos[j] += posValue[pos];
+								routePos[j] += routeCount[pos];
 							}
 						}
 					}
@@ -366,21 +365,31 @@ public class CopyOfPathDefense {
 		return result(res);
 	}
 
-	int attackTowers[];
+	private int attackTowers[];
 
-	int nextPosition(int pos, int[] attackTowers) {
-		//		if (base[pos])
-		//			throw new RuntimeException();
-		int res = -1;
-		final int dpos[] = { 1, -1, N, -N };
+	private final int nextPosition(int pos, int[] attackTowers) {
+		int res = -1, attacks = 0xffff, next;
 		final int dist[] = baseDist[minBaseId[pos]];
 		final int nowDist = dist[pos];
-		for (int d : dpos) {
-			int next = pos + d;
-			if (0 <= next && next < N2 && dist[next] + 1 == nowDist
-					&& (res == -1 || attackTowers[res] > attackTowers[next])) {
-				res = next;
-			}
+		next = pos + 1;
+		if (next < N2 && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
+			res = next;
+			attacks = attackTowers[next];
+		}
+		next = pos - 1;
+		if (0 <= next && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
+			res = next;
+			attacks = attackTowers[next];
+		}
+		next = pos + N;
+		if (next < N2 && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
+			res = next;
+			attacks = attackTowers[next];
+		}
+		next = pos - N;
+		if (0 <= next && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
+			res = next;
+			attacks = attackTowers[next];
 		}
 		//		if (res == -1) {
 		//			for (int i = 0; i < N; i++) {
@@ -394,18 +403,6 @@ public class CopyOfPathDefense {
 		return res;
 	}
 
-	int[] result(List<Tower> res) {
-		int n = res.size() * 3;
-		int x[] = new int[n];
-		for (int i = 0; i < n; i += 3) {
-			Tower t = res.get(i / 3);
-			x[i] = getY(t.pos);
-			x[i + 1] = getX(t.pos);
-			x[i + 2] = t.type;
-		}
-		return x;
-	}
-
 	Creep[] updateCreeps(Creep creeps[], List<Creep> goalCreep, int[] attackTowers) {
 		Creep tmp[] = new Creep[creeps.length];
 		int i = 0;
@@ -414,7 +411,8 @@ public class CopyOfPathDefense {
 				continue;
 			int next = nextPosition(c.pos, attackTowers);
 			if (base[next] >= 0) {
-				goalCreep.add(c);
+				if (baseHealth[base[next]] > 0)
+					goalCreep.add(c);
 				continue;
 			}
 			c.pos = next;
@@ -428,21 +426,14 @@ public class CopyOfPathDefense {
 		for (Tower t : towers) {
 			// search for nearest attackable creep
 			Creep def = null;
-			int cdist = 1 << 29;
+			int cdist = t.t.range + 1;
 			for (Creep c : creeps) {
 				if (c.health > 0) {
 					int dst = dist(t.pos, c.pos);
-					// within range of tower?
-					if (dst <= t.t.range) {
-						// nearest creep?
-						if (dst < cdist) {
-							cdist = dst;
-							def = c;
-						} else if (dst == cdist && c.id < c.id) {
-							// creep with smallest id gets attacked first if they are the same distance away
-							cdist = dst;
-							def = c;
-						}
+					// nearest creep?
+					if (dst < cdist) {
+						cdist = dst;
+						def = c;
 					}
 				}
 			}
@@ -531,5 +522,17 @@ public class CopyOfPathDefense {
 			return res;
 		res[i] = src[src.length - 1];
 		return res;
+	}
+
+	private final int[] result(List<Tower> res) {
+		int n = res.size() * 3;
+		int x[] = new int[n];
+		for (int i = 0; i < n; i += 3) {
+			Tower t = res.get(i / 3);
+			x[i] = getY(t.pos);
+			x[i + 1] = getX(t.pos);
+			x[i + 2] = t.type;
+		}
+		return x;
 	}
 }
