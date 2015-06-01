@@ -778,10 +778,9 @@ public class PathDefenseVis {
 		if (false) {
 			debug = true;
 			vis = true;
-			int N = 1;
 			try {
-				for (long seed = 1; seed <= N; seed++) {
-					int score = runTest(seed, new Wrapper());
+				for (long seed = 306, N = 306; seed <= N; seed++) {
+					int score = runTest(seed, new Wrapper2());
 					System.out.println("Score = " + score);
 				}
 			} catch (Exception e) {
@@ -813,7 +812,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper2 implements Solver {
-		PathDefense solver = new PathDefense();
+		Copy_2_of_CopyOfPathDefense solver = new Copy_2_of_CopyOfPathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
@@ -830,6 +829,7 @@ public class PathDefenseVis {
 			volatile int timeover;
 		}
 
+		final int MAX_TIME = 20000;
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
 		ExecutorService es = Executors.newFixedThreadPool(6);
 
@@ -845,17 +845,22 @@ public class PathDefenseVis {
 					int score1 = vis.runTest(Seed, new Wrapper2());
 					long end1 = System.currentTimeMillis();
 					int max = Math.max(score0, score1);
+					boolean change = false;
 					if (score0 > 1 || score1 > 1) {
 						sum0.d += (double) score0 / max;
 						sum1.d += (double) score1 / max;
+						change = (double) score0 / max < 0.9 || (double) score1 / max < 0.9;
 					}
-					if ((end0 - start0) >= 20000)
+					if ((end0 - start0) >= MAX_TIME)
 						sum0.timeover++;
-					if ((end1 - start1) >= 20000)
+					if ((end1 - start1) >= MAX_TIME)
 						sum1.timeover++;
-					System.out.println(String.format("%3d   %5d : %5d    %5d : %5d    %.1f : %.1f   %d : %d", Seed,
-							score0, score1, (end0 - start0), (end1 - start1), sum0.d, sum1.d, sum0.timeover,
-							sum1.timeover));
+					String out = String.format("%3d   %5d : %5d    %5d : %5d    %.1f : %.1f   %d : %d", Seed, score0,
+							score1, (end0 - start0), (end1 - start1), sum0.d, sum1.d, sum0.timeover, sum1.timeover);
+					if (change)
+						System.err.println(out);
+					else
+						System.out.println(out);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
