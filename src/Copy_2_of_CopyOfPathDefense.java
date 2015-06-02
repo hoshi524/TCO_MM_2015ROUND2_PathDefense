@@ -376,7 +376,7 @@ public class Copy_2_of_CopyOfPathDefense {
 					}
 					int tmpValue = 0, tmpIndex = -1;
 					for (int i = 0; i < tmpCanPut.length; ++i) {
-						int p = tmpCanPut[i], pv = routeRange[p] * 50 + simpleValue[best.range1][p];
+						int p = tmpCanPut[i], pv = routeRange[p] * 100 + simpleValue[best.range1][p];
 						if (routeRange[p] > 0 && tmpValue < pv) {
 							tmpValue = pv;
 							tmpIndex = i;
