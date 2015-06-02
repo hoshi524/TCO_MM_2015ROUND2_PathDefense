@@ -254,7 +254,7 @@ public class Copy_2_of_CopyOfPathDefense {
 			Arrays.sort(this.creeps, (o1, o2) -> o1.id - o2.id);
 			this.money = money;
 			this.baseHealth = baseHealth;
-			//			step++;
+			step++;
 			//			if (step == 1999) {
 			//				for (int i = 0; i < N; ++i) {
 			//					for (int j = 0; j < N; ++j) {
@@ -383,7 +383,7 @@ public class Copy_2_of_CopyOfPathDefense {
 						}
 					}
 					if (tmpIndex != -1) {
-						if (false && step <= SIMULATION_TIME / 6) {
+						if (step < SIMULATION_TIME / 4) {
 							if (already.contains(tmpIndex)) {
 								continue;
 							}

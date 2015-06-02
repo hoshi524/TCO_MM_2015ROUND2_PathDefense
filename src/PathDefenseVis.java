@@ -779,8 +779,8 @@ public class PathDefenseVis {
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 875, N = 875; seed <= N; seed++) {
-					int score = runTest(seed, new Wrapper2());
+				for (long seed = 1, N = 1; seed <= N; seed++) {
+					int score = runTest(seed, new Wrapper());
 					System.out.println("Score = " + score);
 				}
 			} catch (Exception e) {
@@ -800,7 +800,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper implements Solver {
-		CopyOfPathDefense solver = new CopyOfPathDefense();
+		PathDefense solver = new PathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
@@ -812,7 +812,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper2 implements Solver {
-		Copy_2_of_CopyOfPathDefense solver = new Copy_2_of_CopyOfPathDefense();
+		CopyOfPathDefense solver = new CopyOfPathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
