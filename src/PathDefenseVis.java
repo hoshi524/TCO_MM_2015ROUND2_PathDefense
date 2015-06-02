@@ -800,7 +800,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper implements Solver {
-		PathDefense solver = new PathDefense();
+		CopyOfPathDefense solver = new CopyOfPathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
