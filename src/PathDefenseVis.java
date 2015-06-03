@@ -779,9 +779,26 @@ public class PathDefenseVis {
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 100, N = seed + 10; seed <= N; seed++) {
-					int score = runTest(seed, new Wrapper());
-					System.out.println("Score = " + score);
+				for (long seed = 4809, N = seed + 0; seed <= N; seed++) {
+					final long Seed = seed;
+					Thread t0 = new Thread(new Runnable() {
+						@Override
+						public void run() {
+							int score = runTest(Seed, new Wrapper());
+							System.out.println("Score = " + score);
+						}
+					});
+					Thread t1 = new Thread(new Runnable() {
+						@Override
+						public void run() {
+							int score = runTest(Seed, new Wrapper2());
+							System.out.println("Score = " + score);
+						}
+					});
+					t0.start();
+					t1.start();
+					t0.join();
+					t1.join();
 				}
 			} catch (Exception e) {
 				System.err.println("ERROR: Unexpected error while running your test case.");
@@ -833,7 +850,7 @@ public class PathDefenseVis {
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
 		ExecutorService es = Executors.newFixedThreadPool(6);
 
-		for (int seed = 1, size = seed + 1000; seed < size; seed++) {
+		for (int seed = 1, size = seed + 10000; seed < size; seed++) {
 			final int Seed = seed;
 			es.submit(() -> {
 				try {

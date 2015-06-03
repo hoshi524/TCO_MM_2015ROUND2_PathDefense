@@ -1,10 +1,8 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class CopyOfPathDefense {
 
@@ -47,7 +45,6 @@ public class CopyOfPathDefense {
 		basep = new int[bc];
 		baseDist = new int[bc][];
 		minBaseId = new int[N2];
-		attackTowers = new int[N2];
 		// testCount = new int[N2];
 		int minBaseDist[] = new int[N2];
 		Arrays.fill(minBaseDist, Integer.MAX_VALUE);
@@ -283,36 +280,29 @@ public class CopyOfPathDefense {
 		class Simulation {
 			int income;
 			List<Creep> goal = new ArrayList<>();
-			int tmpAttackTowers[];
 
 			public Simulation(List<Tower> add) {
 				for (Creep c : creeps)
 					c.init();
 				Creep tmpCreep[] = Arrays.copyOf(creeps, creeps.length);
-				tmpAttackTowers = Arrays.copyOf(attackTowers, attackTowers.length);
 				List<Tower> tmpTowers = new ArrayList<>(towers);
-				for (Tower tower : add) {
-					tmpTowers.add(tower);
-					for (int j = 0; j < N2; ++j)
-						if (dist(tower.pos, j) <= tower.t.range)
-							++tmpAttackTowers[j];
-				}
+				tmpTowers.addAll(add);
 				Tower[] towers = tmpTowers.toArray(new Tower[0]);
 				while (true) {
-					tmpCreep = updateCreeps(tmpCreep, goal, tmpAttackTowers);
+					tmpCreep = updateCreeps(tmpCreep, goal);
 					if (tmpCreep.length == 0)
 						break;
 					income += updateAttack(tmpCreep, towers);
 				}
 			}
 
-			Creep[] updateCreeps(Creep creeps[], List<Creep> goalCreep, int[] attackTowers) {
+			Creep[] updateCreeps(Creep creeps[], List<Creep> goalCreep) {
 				Creep tmp[] = new Creep[creeps.length];
 				int i = 0;
 				for (Creep c : creeps) {
 					if (c.health <= 0)
 						continue;
-					int next = nextPosition(c, attackTowers);
+					int next = nextPosition(c);
 					if (base[next] >= 0) {
 						if (baseHealth[base[next]] > 0)
 							goalCreep.add(c);
@@ -341,6 +331,7 @@ public class CopyOfPathDefense {
 						}
 					}
 					if (def != null) {
+						// debugAlways(def.id, def.health, def.health - t.t.damage);
 						// we hit something
 						def.health -= t.t.damage;
 						if (def.health <= 0) {
@@ -358,56 +349,44 @@ public class CopyOfPathDefense {
 		int income = 0;
 		Simulation sim;
 		while (true) {
-			Set<Integer> already = new HashSet<>();
 			sim = new Simulation(res);
 			income = Math.max(income, sim.income);
 			if (!sim.goal.isEmpty() && money >= (res.size() + 1) * best.cost) {
 				int rl[] = rangeList[best.range1];
-				int index = -1, value = 0;
-				for (Creep c : sim.goal) {
+				int routeRange[][] = new int[sim.goal.size()][N2];
+				for (int ci = 0; ci < sim.goal.size(); ++ci) {
+					Creep c = sim.goal.get(ci);
 					c.pos = c.ip;
 					if (base[c.pos] >= 0) {
 						continue;
 					}
-					int routeRange[] = new int[N2];
-					int routePos[] = new int[N2];
 					while (base[c.pos] == -1) {
-						c.pos = nextPosition(c, sim.tmpAttackTowers);
+						c.pos = nextPosition(c);
 						if (base[c.pos] >= 0) {
 							break;
 						}
 						for (int i : rl) {
 							int j = c.pos + i;
 							if (0 <= j && j < N2 && dist(c.pos, j) <= best.range) {
-								// ++routeRange[j];
-								routeRange[j] = Math.min(routeRange[j] + 1, (c.health + best.damage - 1) / best.damage);
-								routePos[j] += routeCount[c.pos];
+								++routeRange[ci][j];
 							}
 						}
 					}
-					int tmpValue = 0, tmpIndex = -1;
-					for (int i = 0; i < tmpCanPut.length; ++i) {
-						int p = tmpCanPut[i], pv = routeRange[p] * 100 + simpleValue[best.range1][p];
-						if (routeRange[p] > 0 && tmpValue < pv) {
-							tmpValue = pv;
-							tmpIndex = i;
+				}
+				int index = -1, value = 0;
+				for (int i = 0; i < tmpCanPut.length; ++i) {
+					int p = tmpCanPut[i];
+					int willKill = 0, willAttack = 0;
+					for (int ci = 0; ci < sim.goal.size(); ++ci) {
+						willAttack += routeRange[ci][p];
+						if (routeRange[ci][p] >= (sim.goal.get(ci).health + best.damage - 1) / best.damage) {
+							++willKill;
 						}
 					}
-					if (tmpIndex != -1) {
-						if (step < SIMULATION_TIME / 20) {
-							if (already.contains(tmpIndex)) {
-								continue;
-							}
-							already.add(tmpIndex);
-							List<Tower> tmp = new ArrayList<>(res);
-							tmp.add(new Tower(tmpCanPut[tmpIndex], best));
-							Simulation simulation = new Simulation(tmp);
-							tmpValue += (simulation.income << 8);
-						}
-						if (value < tmpValue) {
-							value = tmpValue;
-							index = tmpIndex;
-						}
+					int pv = (willKill << 10) + (willAttack << 7) + simpleValue[best.range1][p];
+					if (willAttack > 0 && value < pv) {
+						value = pv;
+						index = i;
 					}
 				}
 				if (index == -1) {
@@ -429,7 +408,7 @@ public class CopyOfPathDefense {
 				Tower t = res.get(i);
 				for (Creep c : creeps) {
 					c.init();
-					if (dist(t.pos, nextPosition(c, attackTowers)) <= best.range) {
+					if (dist(t.pos, nextPosition(c)) <= t.t.range) {
 						put = true;
 						break;
 					}
@@ -441,9 +420,6 @@ public class CopyOfPathDefense {
 							break;
 						}
 					towers.add(t);
-					for (int j = 0; j < N2; ++j)
-						if (dist(t.pos, j) <= best.range)
-							++attackTowers[j];
 				} else {
 					res.remove(i);
 					--i;
@@ -453,32 +429,26 @@ public class CopyOfPathDefense {
 		return result(res);
 	}
 
-	private int attackTowers[];
-
-	private final int nextPosition(Creep c, int[] attackTowers) {
+	private final int nextPosition(Creep c) {
 		int pos = c.pos;
-		int res = -1, attacks = 0xffff, next;
+		int next;
 		int dist[] = c.base;
 		final int nowDist = dist[pos];
 		next = pos + 1;
-		if (next < N2 && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
-			res = next;
-			attacks = attackTowers[next];
+		if (next < N2 && dist[next] + 1 == nowDist) {
+			return next;
 		}
 		next = pos - 1;
-		if (0 <= next && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
-			res = next;
-			attacks = attackTowers[next];
+		if (0 <= next && dist[next] + 1 == nowDist) {
+			return next;
 		}
 		next = pos + N;
-		if (next < N2 && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
-			res = next;
-			attacks = attackTowers[next];
+		if (next < N2 && dist[next] + 1 == nowDist) {
+			return next;
 		}
 		next = pos - N;
-		if (0 <= next && dist[next] + 1 == nowDist && attacks > attackTowers[next]) {
-			res = next;
-			attacks = attackTowers[next];
+		if (0 <= next && dist[next] + 1 == nowDist) {
+			return next;
 		}
 		//		if (res == -1) {
 		//			for (int i = 0; i < N; i++) {
@@ -489,7 +459,7 @@ public class CopyOfPathDefense {
 		//			}
 		//			throw new RuntimeException();
 		//		}
-		return res;
+		throw new RuntimeException();
 	}
 
 	private class Tower {
@@ -552,7 +522,8 @@ public class CopyOfPathDefense {
 			this.damage = damage;
 			this.cost = cost;
 			value = (double) (range * damage) / cost;
-			// value = (double) (rangeList[range].length * damage) / cost;
+			// これはうまくいかない。何でかは分かってないから考察の価値はある
+			// value = (double) (range * range * damage) / cost;
 		}
 	}
 
@@ -571,6 +542,10 @@ public class CopyOfPathDefense {
 	private static void debug(Object... obj) {
 		if (DEBUG)
 			System.err.println(Arrays.deepToString(obj));
+	}
+
+	private static void debugAlways(Object... obj) {
+		System.err.println(Arrays.deepToString(obj));
 	}
 
 	private final <T> T[] remove(T[] src, int i) {
