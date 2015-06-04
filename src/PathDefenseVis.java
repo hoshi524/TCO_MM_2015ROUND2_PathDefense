@@ -777,11 +777,11 @@ public class PathDefenseVis {
 
 		if (true) {
 			// アホリスト
-			// 4809
+			// 4809, 1186, 1744, 1794, 1900, 1978, 2204, 2256, 2404
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 3000, N = seed + 100; seed <= N; seed++) {
+				for (long seed = 1794, N = seed + 0; seed <= N; seed++) {
 					final long Seed = seed;
 					Thread t0 = new Thread(new Runnable() {
 						@Override
@@ -850,7 +850,7 @@ public class PathDefenseVis {
 
 		final int MAX_TIME = 20000;
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
-		ExecutorService es = Executors.newFixedThreadPool(3);
+		ExecutorService es = Executors.newFixedThreadPool(7);
 
 		for (int seed = 1, size = seed + 10000; seed < size; seed++) {
 			final int Seed = seed;
