@@ -788,17 +788,17 @@ public class PathDefenseVis {
 							System.out.println("Score = " + score);
 						}
 					});
-					Thread t1 = new Thread(new Runnable() {
-						@Override
-						public void run() {
-							int score = runTest(Seed, new Wrapper2());
-							System.out.println("Score = " + score);
-						}
-					});
+					//					Thread t1 = new Thread(new Runnable() {
+					//						@Override
+					//						public void run() {
+					//							int score = runTest(Seed, new Wrapper2());
+					//							System.out.println("Score = " + score);
+					//						}
+					//					});
+					//					t1.start();
+					//					t1.join();
 					t0.start();
-					t1.start();
 					t0.join();
-					t1.join();
 				}
 			} catch (Exception e) {
 				System.err.println("ERROR: Unexpected error while running your test case.");
@@ -848,7 +848,7 @@ public class PathDefenseVis {
 
 		final int MAX_TIME = 20000;
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
-		ExecutorService es = Executors.newFixedThreadPool(6);
+		ExecutorService es = Executors.newFixedThreadPool(3);
 
 		for (int seed = 1, size = seed + 10000; seed < size; seed++) {
 			final int Seed = seed;

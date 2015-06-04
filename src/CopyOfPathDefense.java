@@ -9,6 +9,7 @@ public class CopyOfPathDefense {
 	private static final int SIMULATION_TIME = 2000;
 	private static final int MAX_TOWER_RANGE = 5;
 	private static final boolean DEBUG = false;
+
 	private int rangeList[][] = new int[MAX_TOWER_RANGE + 1][];
 	private int N, N2, money, creepHealth, creepMoney;
 	private boolean put[];
@@ -33,9 +34,16 @@ public class CopyOfPathDefense {
 			char c = board[x].charAt(y);
 			put[i] = c == '#';
 			if ('0' <= c && c <= '9') {
-				base[i] = c - '0';
-				baseIndex[base[i]] = i;
-				bc++;
+				boolean ok = false;
+				ok |= x != N - 1 && board[x + 1].charAt(y) != '#';
+				ok |= y != N - 1 && board[x].charAt(y + 1) != '#';
+				ok |= x != 0 && board[x - 1].charAt(y) != '#';
+				ok |= y != 0 && board[x].charAt(y - 1) != '#';
+				if (ok) {
+					base[i] = c - '0';
+					baseIndex[base[i]] = i;
+					bc++;
+				}
 			}
 			if (!put[i] && (x == 0 || y == 0 || x == N - 1 || y == N - 1)) {
 				start[si++] = i;
@@ -122,34 +130,27 @@ public class CopyOfPathDefense {
 						continue;
 					++routeCount[now];
 					next = now + N;
-					if (next < N2 && func.isOK(now, next) && !used[next] && !put[next]) {
+					if (next < N2 && !put[next] && func.isOK(now, next) && !used[next]) {
 						queue[qs++] = next;
 						used[next] = true;
 					}
 					next = now - N;
-					if (next >= 0 && func.isOK(now, next) && !used[next] && !put[next]) {
+					if (next >= 0 && !put[next] && func.isOK(now, next) && !used[next]) {
 						queue[qs++] = next;
 						used[next] = true;
 					}
 					next = now + 1;
-					if (y != N - 1 && func.isOK(now, next) && !used[next] && !put[next]) {
+					if (y != N - 1 && !put[next] && func.isOK(now, next) && !used[next]) {
 						queue[qs++] = next;
 						used[next] = true;
 					}
 					next = now - 1;
-					if (y != 0 && func.isOK(now, next) && !used[next] && !put[next]) {
+					if (y != 0 && !put[next] && func.isOK(now, next) && !used[next]) {
 						queue[qs++] = next;
 						used[next] = true;
 					}
 				}
 			}
-			//			for (int i = 0; i < N; ++i) {
-			//				for (int j = 0; j < N; ++j) {
-			//					System.out.print(String.format("%3d", posValue[pos(i, j)]));
-			//				}
-			//				System.out.println();
-			//			}
-			//			System.out.println();
 		}
 
 		for (int range = 1; range <= MAX_TOWER_RANGE; ++range) {
@@ -176,12 +177,13 @@ public class CopyOfPathDefense {
 			int d[] = new int[N2], r2 = r * r;
 			int range[] = rangeList[r];
 			for (int i = 0; i < N2; ++i) {
-				for (int j : range) {
-					int x = i + j;
-					if (0 <= x && x < N2 && dist(i, x) <= r2) {
-						d[i] += routeCount[x];
+				if (put[i])
+					for (int j : range) {
+						int x = i + j;
+						if (0 <= x && x < N2 && dist(i, x) <= r2) {
+							d[i] += routeCount[x];
+						}
 					}
-				}
 			}
 			simpleValue[r] = d;
 		}
@@ -199,30 +201,13 @@ public class CopyOfPathDefense {
 
 		List<Integer> canPut = new ArrayList<>();
 		for (int i = 0; i < N2; ++i) {
-			if (put[i]) {
+			if (put[i] && simpleValue[MAX_TOWER_RANGE][i] > 0) {
 				canPut.add(i);
 			}
 		}
 		this.canPut = new int[canPut.size()];
 		for (int i = 0; i < this.canPut.length; ++i)
 			this.canPut[i] = canPut.get(i);
-
-		//		for (int i = 0; i < N; ++i) {
-		//			for (int j = 0; j < N; ++j) {
-		//				int pos = pos(i, j);
-		//				print: {
-		//					for (Position position : this.canPut) {
-		//						if (pos == position.pos) {
-		//							System.out.print(String.format("%3d ", position.value));
-		//							break print;
-		//						}
-		//					}
-		//					System.out.print("    ");
-		//				}
-		//			}
-		//			System.out.println();
-		//		}
-		//		System.out.println();
 
 		//		debug("board", board);
 		//		debug("money", money);
@@ -233,8 +218,8 @@ public class CopyOfPathDefense {
 		return 0;
 	}
 
-	private final int dist(int pos1, int pos2) {
-		int dx = getX(pos1) - getX(pos2), dy = getY(pos1) - getY(pos2);
+	private final int dist(final int pos1, final int pos2) {
+		final int dx = getX(pos1) - getX(pos2), dy = getY(pos1) - getY(pos2);
 		return dx * dx + dy * dy;
 	}
 
@@ -245,6 +230,7 @@ public class CopyOfPathDefense {
 
 	int[] placeTowers(int[] creep, int money, int[] baseHealth) {
 		{// input
+			step++;
 			this.creeps = new Creep[creep.length / 4];
 			for (int i = 0; i < creep.length; i += 4) {
 				Creep c = new Creep(creep[i], creep[i + 1], pos(creep[i + 3], creep[i + 2]));
@@ -262,7 +248,6 @@ public class CopyOfPathDefense {
 			Arrays.sort(this.creeps, (o1, o2) -> o1.id - o2.id);
 			this.money = money;
 			this.baseHealth = baseHealth;
-			step++;
 			//			if (step == 1999) {
 			//				for (int i = 0; i < N; ++i) {
 			//					for (int j = 0; j < N; ++j) {
@@ -281,7 +266,7 @@ public class CopyOfPathDefense {
 			int income;
 			List<Creep> goal = new ArrayList<>();
 
-			public Simulation(List<Tower> add) {
+			public Simulation(final List<Tower> add) {
 				for (Creep c : creeps)
 					c.init();
 				Creep tmpCreep[] = Arrays.copyOf(creeps, creeps.length);
@@ -296,7 +281,7 @@ public class CopyOfPathDefense {
 				}
 			}
 
-			Creep[] updateCreeps(Creep creeps[], List<Creep> goalCreep) {
+			Creep[] updateCreeps(final Creep creeps[], final List<Creep> goalCreep) {
 				Creep tmp[] = new Creep[creeps.length];
 				int i = 0;
 				for (Creep c : creeps) {
@@ -314,7 +299,7 @@ public class CopyOfPathDefense {
 				return Arrays.copyOf(tmp, i);
 			}
 
-			int updateAttack(Creep creeps[], Tower[] towers) {
+			int updateAttack(final Creep creeps[], final Tower[] towers) {
 				int income = 0;
 				for (Tower t : towers) {
 					// search for nearest attackable creep
@@ -430,10 +415,8 @@ public class CopyOfPathDefense {
 	}
 
 	private final int nextPosition(Creep c) {
-		int pos = c.pos;
+		final int pos = c.pos, dist[] = c.base, nowDist = dist[pos];
 		int next;
-		int dist[] = c.base;
-		final int nowDist = dist[pos];
 		next = pos + 1;
 		if (next < N2 && dist[next] + 1 == nowDist) {
 			return next;
@@ -474,7 +457,8 @@ public class CopyOfPathDefense {
 	}
 
 	private class Creep {
-		int id, ih, ip;
+		final int id;
+		int ih, ip;
 		int health, pos, bit = 0, base[];
 
 		Creep(int id, int health, int pos) {
@@ -493,7 +477,7 @@ public class CopyOfPathDefense {
 		 * Creepの移動に関して、シミューレーションを寄せる
 		 * 具体的には、あるベースに近づかない移動をした場合は、そのベースが距離最短でも向かわない
 		 */
-		void update(Creep c) {
+		void update(final Creep c) {
 			ih = health = c.health;
 			base = null;
 			for (int i = 0; i < baseDist.length; ++i) {
@@ -515,7 +499,7 @@ public class CopyOfPathDefense {
 		final int id, range1, range, damage, cost;
 		final double value;
 
-		TowerType(int id, int range, int damage, int cost) {
+		TowerType(final int id, final int range, final int damage, final int cost) {
 			this.id = id;
 			this.range1 = range;
 			this.range = range * range;
@@ -527,28 +511,28 @@ public class CopyOfPathDefense {
 		}
 	}
 
-	private final int pos(int x, int y) {
+	private final int pos(final int x, final int y) {
 		return x * N + y;
 	}
 
-	private final int getX(int pos) {
+	private final int getX(final int pos) {
 		return pos / N;
 	}
 
-	private final int getY(int pos) {
+	private final int getY(final int pos) {
 		return pos % N;
 	}
 
-	private static void debug(Object... obj) {
+	private static void debug(final Object... obj) {
 		if (DEBUG)
 			System.err.println(Arrays.deepToString(obj));
 	}
 
-	private static void debugAlways(Object... obj) {
+	private static void debugAlways(final Object... obj) {
 		System.err.println(Arrays.deepToString(obj));
 	}
 
-	private final <T> T[] remove(T[] src, int i) {
+	private final <T> T[] remove(final T[] src, final int i) {
 		T[] res = Arrays.copyOf(src, src.length - 1);
 		if (i == src.length - 1)
 			return res;
@@ -556,7 +540,7 @@ public class CopyOfPathDefense {
 		return res;
 	}
 
-	private final int[] remove(int[] src, int i) {
+	private final int[] remove(final int[] src, final int i) {
 		int[] res = Arrays.copyOf(src, src.length - 1);
 		if (i == src.length - 1)
 			return res;
@@ -564,7 +548,7 @@ public class CopyOfPathDefense {
 		return res;
 	}
 
-	private final int[] result(List<Tower> res) {
+	private final int[] result(final List<Tower> res) {
 		int n = res.size() * 3;
 		int x[] = new int[n];
 		for (int i = 0; i < n; i += 3) {
