@@ -433,9 +433,9 @@ class Drawer extends JFrame {
 								int r = world.tc.towerTypes[ttype].range;
 								g.drawOval(15 + (j - r) * cellSize + 1, 15 + (i - r) * cellSize + 1, cellSize
 										* (r * 2 + 1) - 1, cellSize * (r * 2 + 1) - 1);
-								g.setColor(new Color(128, 128, 128, 30));
-								g.fillOval(15 + (j - r) * cellSize + 1, 15 + (i - r) * cellSize + 1, cellSize
-										* (r * 2 + 1) - 1, cellSize * (r * 2 + 1) - 1);
+								//								g.setColor(new Color(128, 128, 128, 30));
+								//								g.fillOval(15 + (j - r) * cellSize + 1, 15 + (i - r) * cellSize + 1, cellSize
+								//										* (r * 2 + 1) - 1, cellSize * (r * 2 + 1) - 1);
 							}
 						}
 					}
@@ -775,30 +775,32 @@ public class PathDefenseVis {
 				System.out.println("WARNING: unknown argument " + args[i] + ".");
 			}
 
-		if (false) {
+		if (true) {
+			// アホリスト
+			// 4809
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 4809, N = seed + 0; seed <= N; seed++) {
+				for (long seed = 3000, N = seed + 100; seed <= N; seed++) {
 					final long Seed = seed;
 					Thread t0 = new Thread(new Runnable() {
 						@Override
 						public void run() {
 							int score = runTest(Seed, new Wrapper());
-							System.out.println("Score = " + score);
+							System.out.println("Score1 = " + score);
 						}
 					});
-					//					Thread t1 = new Thread(new Runnable() {
-					//						@Override
-					//						public void run() {
-					//							int score = runTest(Seed, new Wrapper2());
-					//							System.out.println("Score = " + score);
-					//						}
-					//					});
-					//					t1.start();
-					//					t1.join();
+					Thread t1 = new Thread(new Runnable() {
+						@Override
+						public void run() {
+							int score = runTest(Seed, new Wrapper2());
+							System.out.println("Score2 = " + score);
+						}
+					});
 					t0.start();
+					t1.start();
 					t0.join();
+					t1.join();
 				}
 			} catch (Exception e) {
 				System.err.println("ERROR: Unexpected error while running your test case.");

@@ -368,7 +368,12 @@ public class CopyOfPathDefense {
 							++willKill;
 						}
 					}
-					int pv = (willKill << 10) + (willAttack << 7) + simpleValue[best.range1][p];
+					int pv;
+					if (basep.length == 1) {
+						pv = (willKill << 10) + simpleValue[best.range1][p];
+					} else {
+						pv = (willKill << 10) + (willAttack << 6) + simpleValue[best.range1][p];
+					}
 					if (willAttack > 0 && value < pv) {
 						value = pv;
 						index = i;
