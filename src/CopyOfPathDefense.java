@@ -358,7 +358,7 @@ public class CopyOfPathDefense {
 						}
 					}
 				}
-				int index = -1, value = 0;
+				int index = -1, value = Integer.MIN_VALUE;
 				for (int i = 0; i < tmpCanPut.length; ++i) {
 					int p = tmpCanPut[i];
 					int willKill = 0, willAttack = 0;
@@ -368,15 +368,17 @@ public class CopyOfPathDefense {
 							++willKill;
 						}
 					}
-					int pv;
-					if (basep.length == 1) {
-						pv = (willKill << 10) + simpleValue[best.range1][p];
-					} else {
-						pv = (willKill << 10) + (willAttack << 6) + simpleValue[best.range1][p];
-					}
-					if (willAttack > 0 && value < pv) {
-						value = pv;
-						index = i;
+					if (willAttack > 0) {
+						List<Tower> tmpTowers = new ArrayList<>(towers);
+						tmpTowers.add(new Tower(p, best));
+						Simulation s = new Simulation(tmpTowers);
+						int pv = ((creeps.length - s.goal.size()) << 11) + simpleValue[best.range1][p];
+						for (Creep c : s.goal)
+							pv -= c.health << 5;
+						if (value < pv) {
+							value = pv;
+							index = i;
+						}
 					}
 				}
 				if (index == -1) {

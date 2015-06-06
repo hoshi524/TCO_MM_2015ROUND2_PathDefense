@@ -775,13 +775,13 @@ public class PathDefenseVis {
 				System.out.println("WARNING: unknown argument " + args[i] + ".");
 			}
 
-		if (true) {
+		if (false) {
 			// アホリスト
 			// 4809, 1186, 1744, 1794, 1900, 1978, 2204, 2256, 2404
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 1794, N = seed + 0; seed <= N; seed++) {
+				for (long seed = 3000, N = seed + 1000; seed <= N; seed++) {
 					final long Seed = seed;
 					Thread t0 = new Thread(new Runnable() {
 						@Override
@@ -845,7 +845,7 @@ public class PathDefenseVis {
 	void compare() {
 		class ParameterClass {
 			volatile double d;
-			volatile int timeover;
+			volatile int timeover, win;
 		}
 
 		final int MAX_TIME = 20000;
@@ -869,13 +869,18 @@ public class PathDefenseVis {
 						sum0.d += (double) score0 / max;
 						sum1.d += (double) score1 / max;
 						change = (double) score0 / max < 0.9 || (double) score1 / max < 0.9;
+						if (score0 > score1)
+							sum0.win++;
+						else if (score0 < score1)
+							sum1.win++;
 					}
 					if ((end0 - start0) >= MAX_TIME)
 						sum0.timeover++;
 					if ((end1 - start1) >= MAX_TIME)
 						sum1.timeover++;
-					String out = String.format("%3d   %5d : %5d    %5d : %5d    %.1f : %.1f   %d : %d", Seed, score0,
-							score1, (end0 - start0), (end1 - start1), sum0.d, sum1.d, sum0.timeover, sum1.timeover);
+					String out = String.format("%3d   %5d : %5d   %5d : %5d   %.1f : %.1f  %4d : %4d   %d : %d", Seed,
+							score0, score1, (end0 - start0), (end1 - start1), sum0.d, sum1.d, sum0.win, sum1.win,
+							sum0.timeover, sum1.timeover);
 					if (change)
 						System.err.println(out);
 					else
