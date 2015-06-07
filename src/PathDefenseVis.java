@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -775,13 +776,13 @@ public class PathDefenseVis {
 				System.out.println("WARNING: unknown argument " + args[i] + ".");
 			}
 
-		if (true) {
+		if (false) {
 			// アホリスト
 			// 4809, 1186, 1744, 1794, 1900, 1978, 2204, 2256, 2404
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 4000, N = seed + 0; seed <= N; seed++) {
+				for (long seed = 2000, N = seed + 1000; seed <= N; seed++) {
 					final long Seed = seed;
 					Thread t0 = new Thread(new Runnable() {
 						@Override
@@ -798,7 +799,7 @@ public class PathDefenseVis {
 						}
 					});
 					t0.start();
-					// t1.start();
+					t1.start();
 					t0.join();
 					t1.join();
 				}
@@ -808,7 +809,8 @@ public class PathDefenseVis {
 			}
 		} else {
 			vis = false;
-			compare();
+			// compare();
+			Optimization();
 		}
 	}
 
@@ -819,7 +821,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper implements Solver {
-		CopyOfPathDefense solver = new CopyOfPathDefense();
+		CopyOfCopyOfCopyOfPathDefense solver = new CopyOfCopyOfCopyOfPathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
@@ -842,6 +844,80 @@ public class PathDefenseVis {
 		}
 	}
 
+	void Optimization() {
+		@SuppressWarnings("unchecked")
+		final List<Integer> testCase[][] = new List[TestCase.MAX_BASE_COUNT + 1][TowerType.MAX_TOWER_RANGE + 1];
+		for (int i = 0; i < testCase.length; ++i)
+			for (int j = 0; j < TowerType.MAX_TOWER_RANGE; ++j)
+				testCase[i][j] = new ArrayList<>();
+		ExecutorService es = Executors.newFixedThreadPool(32);
+		for (int seed = 1; seed <= 3000; ++seed) {
+			final int Seed = seed;
+			es.submit(() -> {
+				Wrapper wrapper = new Wrapper();
+				runTest(Seed, wrapper);
+				testCase[wrapper.solver.getBaseCount()][wrapper.solver.getBestRange()].add(Seed);
+			});
+		}
+		try {
+			es.shutdown();
+			if (!es.awaitTermination(1000000L, TimeUnit.SECONDS))
+				es.shutdownNow();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			es.shutdownNow();
+		}
+		for (int base = 1; base <= TestCase.MAX_BASE_COUNT; ++base) {
+			final int BASE = base;
+			for (int range = 1; range <= TowerType.MAX_TOWER_RANGE; ++range) {
+				final int RANGE = range;
+				int min = 1, max = 200;
+				int x = -1, value = 0;
+				while (true) {
+					int diff = Math.max(1, (max - min) / 10);
+					for (int p = min; p <= max; p += diff) {
+						final int P = p;
+						class Tmp {
+							volatile int tmp;
+						}
+						Tmp tmp = new Tmp();
+						es = Executors.newFixedThreadPool(32);
+						for (int seed : testCase[base][range]) {
+							final int Seed = seed;
+							es.submit(() -> {
+								Wrapper wrapper = new Wrapper();
+								wrapper.solver.attackValue[BASE][RANGE] = P;
+								int score = runTest(Seed, wrapper);
+								tmp.tmp += score;
+							});
+						}
+						long start = System.currentTimeMillis();
+						try {
+							es.shutdown();
+							if (!es.awaitTermination(1000000L, TimeUnit.SECONDS))
+								es.shutdownNow();
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+							es.shutdownNow();
+						}
+						System.out.println(Arrays.deepToString(new Object[] { p, tmp.tmp,
+								System.currentTimeMillis() - start }));
+						if (value < tmp.tmp) {
+							value = tmp.tmp;
+							x = p;
+						}
+					}
+					if (diff == 1)
+						break;
+					min = x - diff;
+					max = x + diff;
+					System.out.println(Arrays.deepToString(new Object[] { "base", base, "range", range, x }));
+				}
+				System.out.println(Arrays.deepToString(new Object[] { "base", base, "range", range, x }));
+			}
+		}
+	}
+
 	void compare() {
 		class ParameterClass {
 			volatile double d;
@@ -852,7 +928,7 @@ public class PathDefenseVis {
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
 		ExecutorService es = Executors.newFixedThreadPool(6);
 
-		for (int seed = 1, size = seed + 10000; seed < size; seed++) {
+		for (int seed = 1, size = seed + 2000; seed < size; seed++) {
 			final int Seed = seed;
 			es.submit(() -> {
 				try {

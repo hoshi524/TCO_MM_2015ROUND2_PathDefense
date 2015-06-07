@@ -4,10 +4,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CopyOfPathDefense {
+public class CopyOfCopyOfCopyOfPathDefense {
 
 	private static final int SIMULATION_TIME = 2000;
 	private static final int MAX_TOWER_RANGE = 5;
+	private static final int MAX_BASE_COUNT = 8;
 	private static final boolean DEBUG = false;
 
 	private int rangeList[][] = new int[MAX_TOWER_RANGE + 1][];
@@ -322,6 +323,26 @@ public class CopyOfPathDefense {
 		return dx * dx + dy * dy;
 	}
 
+	int attackValue[][] = new int[][] {//
+	{ 0, 0, 0, 0, 0, 0 },//0
+			{ 1, 1, 1, 1, 1, 1 },//1
+			{ 5, 5, 5, 5, 5, 5 },//2
+			{ 39, 39, 39, 39, 39, 39 },//3
+			{ 176, 176, 176, 176, 176, 176 },//4
+			{ 38, 38, 38, 38, 38, 38 },//5
+			{ 191, 191, 191, 191, 191, 191 },//6
+			{ 135, 135, 135, 135, 135, 135 },//7
+			{ 208, 208, 208, 208, 208, 208 } //8
+	};
+
+	int getBaseCount() {
+		return basep.length;
+	}
+
+	int getBestRange() {
+		return best.range1;
+	}
+
 	int[] placeTowers(int[] creep, int money, int[] baseHealth) {
 		Creep[] creeps = new Creep[creep.length / 4];
 		{// input
@@ -400,12 +421,8 @@ public class CopyOfPathDefense {
 							++willKill;
 						}
 					}
-					int pv;
-					if (basep.length == 1) {
-						pv = (willKill << 10) + simpleValue[best.range1][p];
-					} else {
-						pv = (willKill << 10) + (willAttack << 7) + simpleValue[best.range1][p];
-					}
+					int pv = (willKill << 10) + (willAttack * attackValue[basep.length][best.range1])
+							+ simpleValue[best.range1][p];
 					if (willAttack > 0 && value < pv) {
 						value = pv;
 						index = i;
