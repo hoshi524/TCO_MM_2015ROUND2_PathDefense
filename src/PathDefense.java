@@ -273,7 +273,7 @@ public class PathDefense {
 				List<Tower> tmpTowers = new ArrayList<>(towers);
 				tmpTowers.addAll(add);
 				Tower[] towers = tmpTowers.toArray(new Tower[0]);
-				while (true) {
+				for (int s = step; s <= SIMULATION_TIME; ++s) {
 					tmpCreep = updateCreeps(tmpCreep, goal);
 					if (tmpCreep.length == 0)
 						break;
@@ -392,28 +392,26 @@ public class PathDefense {
 		// new Scanner(System.in).nextLine();
 		if (income == 0)
 			return new int[0];
-		{
-			for (int i = 0; i < res.size(); ++i) {
-				boolean put = false;
-				Tower t = res.get(i);
-				for (Creep c : creeps) {
-					c.init();
-					if (dist(t.pos, nextPosition(c)) <= t.t.range) {
-						put = true;
+		for (int i = 0; i < res.size(); ++i) {
+			boolean put = false;
+			Tower t = res.get(i);
+			for (Creep c : creeps) {
+				c.init();
+				if (dist(t.pos, nextPosition(c)) <= t.t.range) {
+					put = true;
+					break;
+				}
+			}
+			if (put) {
+				for (int j = 0; j < canPut.length; ++j)
+					if (t.pos == canPut[j]) {
+						canPut = remove(canPut, j);
 						break;
 					}
-				}
-				if (put) {
-					for (int j = 0; j < canPut.length; ++j)
-						if (t.pos == canPut[j]) {
-							canPut = remove(canPut, j);
-							break;
-						}
-					towers.add(t);
-				} else {
-					res.remove(i);
-					--i;
-				}
+				towers.add(t);
+			} else {
+				res.remove(i);
+				--i;
 			}
 		}
 		return result(res);
@@ -487,9 +485,9 @@ public class PathDefense {
 			base = null;
 			for (int i = 0; i < baseDist.length; ++i) {
 				int tmp[] = baseDist[i], b = (1 << i);
-				if (tmp[pos] <= tmp[c.pos]) {
+				if (tmp[ip] <= tmp[c.ip]) {
 					bit |= b;
-				} else if ((bit & b) == 0 && (base == null || base[c.pos] > tmp[c.pos])) {
+				} else if ((bit & b) == 0 && (base == null || base[c.ip] > tmp[c.ip])) {
 					base = tmp;
 				}
 			}

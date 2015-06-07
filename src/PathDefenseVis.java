@@ -775,13 +775,13 @@ public class PathDefenseVis {
 				System.out.println("WARNING: unknown argument " + args[i] + ".");
 			}
 
-		if (false) {
+		if (true) {
 			// アホリスト
 			// 4809, 1186, 1744, 1794, 1900, 1978, 2204, 2256, 2404
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 3000, N = seed + 1000; seed <= N; seed++) {
+				for (long seed = 4000, N = seed + 0; seed <= N; seed++) {
 					final long Seed = seed;
 					Thread t0 = new Thread(new Runnable() {
 						@Override
@@ -798,7 +798,7 @@ public class PathDefenseVis {
 						}
 					});
 					t0.start();
-					t1.start();
+					// t1.start();
 					t0.join();
 					t1.join();
 				}
@@ -850,7 +850,7 @@ public class PathDefenseVis {
 
 		final int MAX_TIME = 20000;
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
-		ExecutorService es = Executors.newFixedThreadPool(7);
+		ExecutorService es = Executors.newFixedThreadPool(6);
 
 		for (int seed = 1, size = seed + 10000; seed < size; seed++) {
 			final int Seed = seed;
