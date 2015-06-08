@@ -12,8 +12,10 @@ import java.io.InputStreamReader;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -782,7 +784,7 @@ public class PathDefenseVis {
 			debug = true;
 			vis = true;
 			try {
-				for (long seed = 2000, N = seed + 1000; seed <= N; seed++) {
+				for (long seed = 2366, N = seed + 0; seed <= N; seed++) {
 					final long Seed = seed;
 					Thread t0 = new Thread(new Runnable() {
 						@Override
@@ -833,7 +835,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper2 implements Solver {
-		CopyOfCopyOfPathDefense solver = new CopyOfCopyOfPathDefense();
+		PathDefense solver = new PathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
@@ -845,18 +847,22 @@ public class PathDefenseVis {
 	}
 
 	void Optimization() {
+		final int ALL = 4000;
 		@SuppressWarnings("unchecked")
 		final List<Integer> testCase[][] = new List[TestCase.MAX_BASE_COUNT + 1][TowerType.MAX_TOWER_RANGE + 1];
+		final int[] nowScore = new int[ALL];
 		for (int i = 0; i < testCase.length; ++i)
 			for (int j = 0; j < testCase[i].length; ++j)
 				testCase[i][j] = new ArrayList<>();
 		ExecutorService es = Executors.newFixedThreadPool(32);
-		for (int seed = 1; seed <= 3000; ++seed) {
+		for (int seed = 1; seed <= ALL; ++seed) {
 			final int Seed = seed;
 			es.submit(() -> {
 				Wrapper wrapper = new Wrapper();
 				runTest(Seed, wrapper);
 				testCase[wrapper.solver.getBaseCount()][wrapper.solver.getBestRange()].add(Seed);
+				int score = runTest(Seed, new Wrapper2());
+				nowScore[Seed] = score;
 			});
 		}
 		try {
@@ -867,15 +873,19 @@ public class PathDefenseVis {
 			e.printStackTrace();
 			es.shutdownNow();
 		}
-		for (int base = 1; base <= TestCase.MAX_BASE_COUNT; ++base) {
+		for (int base = 2; base <= TestCase.MAX_BASE_COUNT; ++base) {
 			final int BASE = base;
 			for (int range = 1; range <= TowerType.MAX_TOWER_RANGE; ++range) {
-				final int RANGE = range;
-				int min = 1, max = 200;
-				int x = -1, value = 0;
+				final int RANGE = range, init = new Wrapper().solver.attackValue[BASE][RANGE];
+				int min = Math.max(1, init - 50), max = init + 50;
+				int x = -1, value = Integer.MIN_VALUE;
+				Set<Integer> used = new HashSet<>();
 				while (true) {
 					int diff = Math.max(1, (max - min) / 10);
 					for (int p = min; p <= max; p += diff) {
+						if (used.contains(p))
+							continue;
+						used.add(p);
 						final int P = p;
 						class Tmp {
 							volatile int tmp;
@@ -888,7 +898,10 @@ public class PathDefenseVis {
 								Wrapper wrapper = new Wrapper();
 								wrapper.solver.attackValue[BASE][RANGE] = P;
 								int score = runTest(Seed, wrapper);
-								tmp.tmp += score;
+								if (nowScore[Seed] < score)
+									tmp.tmp++;
+								else if (nowScore[Seed] > score)
+									tmp.tmp--;
 							});
 						}
 						long start = System.currentTimeMillis();
@@ -909,7 +922,7 @@ public class PathDefenseVis {
 					}
 					if (diff == 1)
 						break;
-					min = x - diff;
+					min = Math.max(1, x - diff);
 					max = x + diff;
 					System.out.println(Arrays.deepToString(new Object[] { "base", base, "range", range, x }));
 				}
@@ -928,7 +941,7 @@ public class PathDefenseVis {
 		final ParameterClass sum0 = new ParameterClass(), sum1 = new ParameterClass();
 		ExecutorService es = Executors.newFixedThreadPool(6);
 
-		for (int seed = 1, size = seed + 2000; seed < size; seed++) {
+		for (int seed = 1, size = seed + 10000; seed < size; seed++) {
 			final int Seed = seed;
 			es.submit(() -> {
 				try {

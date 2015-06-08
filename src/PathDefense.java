@@ -8,7 +8,6 @@ public class PathDefense {
 
 	private static final int SIMULATION_TIME = 2000;
 	private static final int MAX_TOWER_RANGE = 5;
-	private static final int MAX_BASE_COUNT = 8;
 	private static final boolean DEBUG = false;
 
 	private int rangeList[][] = new int[MAX_TOWER_RANGE + 1][];
@@ -325,14 +324,14 @@ public class PathDefense {
 
 	int attackValue[][] = new int[][] {//
 	{ -1, -1, -1, -1, -1, -1 },//0
-			{ -1, 0, 2, 1, 1, 1 },//1
-			{ -1, 7, 21, 5, 6, 22 },//2
-			{ -1, 58, 10, 82, 103, 94 },//3
-			{ -1, 1, 42, 55, 83, 170 },//4
-			{ -1, 58, 118, 205, 95, 159 },//5
-			{ -1, 172, 165, 167, 191, 207 },//6
-			{ -1, 19, 130, 78, 171, 205 },//7
-			{ -1, 1, 82, 39, 145, 206 } //8
+			{ -1, 1, 2, 2, 1, 1 },//1
+			{ -1, 4, 4, 7, 6, 14 },//2
+			{ -1, 1, 10, 17, 68, 97 },//3
+			{ -1, 1, 33, 92, 79, 118 },//4
+			{ -1, 78, 61, 90, 142, 182 },//5
+			{ -1, 178, 80, 82, 208, 216 },//6
+			{ -1, 2, 167, 103, 213, 247 },//7
+			{ -1, 2, 135, 177, 241, 247 } //8
 	};
 
 	int getBaseCount() {
@@ -417,7 +416,7 @@ public class PathDefense {
 					int willKill = 0, willAttack = 0;
 					for (int ci = 0; ci < sim.goal.size(); ++ci) {
 						willAttack += routeRange[ci][p];
-						if (routeRange[ci][p] >= (sim.goal.get(ci).health + best.damage - 1) / best.damage) {
+						if (routeRange[ci][p] * best.damage >= sim.goal.get(ci).health) {
 							++willKill;
 						}
 					}
