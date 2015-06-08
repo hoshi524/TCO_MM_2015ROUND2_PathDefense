@@ -8,16 +8,19 @@ public class PathDefense {
 
 	private static final int SIMULATION_TIME = 2000;
 	private static final int MAX_TOWER_RANGE = 5;
+	private static final int MAX_BASE_COUNT = 8;
 	private static final boolean DEBUG = false;
 
 	private int rangeList[][] = new int[MAX_TOWER_RANGE + 1][];
-	private int N, N2, money, creepHealth, creepMoney;
+	private int N, N2, creepMoney;
 	private boolean put[];
 	private TowerType types[], best;
-	private Creep creeps[];
-	private int[] basep, base, baseIndex, canPut;
-	private int[] start, routeCount, minBaseId, baseHealth;
+	private int[] basep, base, baseIndex, start, routeCount, minBaseId, baseHealth;
 	private int[][] baseDist, simpleValue;
+
+	private final List<Tower> towers = new ArrayList<>();
+	private int step = 0, canPut[];
+	private Map<Integer, Creep> creepIdMap = new HashMap<>();
 
 	int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 		N = board.length;
@@ -53,7 +56,6 @@ public class PathDefense {
 		basep = new int[bc];
 		baseDist = new int[bc][];
 		minBaseId = new int[N2];
-		// testCount = new int[N2];
 		int minBaseDist[] = new int[N2];
 		Arrays.fill(minBaseDist, Integer.MAX_VALUE);
 		bc = 0;
@@ -188,16 +190,30 @@ public class PathDefense {
 			simpleValue[r] = d;
 		}
 
-		this.money = money;
-		this.creepHealth = creepHealth;
 		this.creepMoney = creepMoney;
 		types = new TowerType[towerTypes.length / 3];
 		for (int i = 0; i < towerTypes.length; i += 3) {
 			types[i / 3] = new TowerType(i / 3, towerTypes[i], towerTypes[i + 1], towerTypes[i + 2]);
-			debug("range", types[i / 3].range1, "damage", types[i / 3].damage, types[i / 3].cost, types[i / 3].value);
+		}
+		while (true) {
+			boolean ok = true;
+			for (int i = 0; i < types.length; ++i) {
+				for (int j = 0; j < types.length && i < types.length; ++j) {
+					if (i == j)
+						continue;
+					TowerType t0 = types[i];
+					TowerType t1 = types[j];
+					if (t0.value * 6 > t1.value * 7
+							|| (t0.damage >= t1.damage && t0.range >= t1.range && t0.cost <= t1.cost)) {
+						types = remove(types, j);
+						ok = false;
+					}
+				}
+			}
+			if (ok)
+				break;
 		}
 		Arrays.sort(types, (o1, o2) -> Double.compare(o2.value, o1.value));
-		best = types[0];
 
 		List<Integer> canPut = new ArrayList<>();
 		for (int i = 0; i < N2; ++i) {
@@ -214,8 +230,92 @@ public class PathDefense {
 		debug("creepHealth", creepHealth);
 		debug("creepMoney", creepMoney);
 		//		debug("towerTypes", towerTypes);
+		if (types.length > 1) {
+			int value = 0, index = 0;
+			for (int i = 0; i < types.length; ++i) {
+				best = types[i];
+				// debug("range", best.range1, "damage", best.damage, "cost", best.cost, best.value);
+				int tmp = new TestCase(board, money, creepHealth, creepMoney, towerTypes, start).score;
+				if (value < tmp) {
+					value = tmp;
+					index = i;
+				}
+			}
+			best = types[index];
+		} else {
+			best = types[0];
+		}
 
 		return 0;
+	}
+
+	class TestCase {
+		private static final int CREEP_COUNT = 2000;
+		int score;
+
+		public TestCase(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes, int[] spawn) {
+			XorShift rnd = new XorShift();
+			Creep[] creeps = new Creep[CREEP_COUNT];
+			for (int i = 0; i < CREEP_COUNT; i++) {
+				int spawnTime = rnd.nextInt(SIMULATION_TIME);
+				Creep c = new Creep(i, creepHealth * (1 << (spawnTime / 500)), spawn[rnd.nextInt(spawn.length)]);
+				c.spawnTime = spawnTime;
+				creeps[i] = c;
+			}
+			int tmpPut[] = Arrays.copyOf(canPut, canPut.length);
+			{
+				int baseCount = 0;
+				for (int i = 0; i < N2; ++i) {
+					char c = board[getX(i)].charAt(getY(i));
+					if ('0' <= c && c <= '9') {
+						++baseCount;
+					}
+				}
+				int[] baseHealth = new int[baseCount];
+				Arrays.fill(baseHealth, 1000);
+				Creep[] tmpCreep = new Creep[0];
+				Tower[] towers = new Tower[0];
+				for (int s = 0; s < SIMULATION_TIME; ++s) {
+					int res[] = placeTowers(to(tmpCreep), money, baseHealth);
+					for (int i = 0, n = res.length / 3; i < n; ++i) {
+						int pos = pos(res[i * 3 + 1], res[i * 3]);
+						Tower t = new Tower(pos, best);
+						towers = add(towers, t);
+						money -= t.t.cost;
+					}
+					List<Creep> goal = new ArrayList<>();
+					tmpCreep = updateCreeps(tmpCreep, goal);
+					for (Creep c : goal) {
+						baseHealth[base[c.pos]] = Math.max(0, baseHealth[base[c.pos]] - c.health);
+					}
+					for (Creep c : creeps) {
+						if (s == c.spawnTime) {
+							tmpCreep = add(tmpCreep, c);
+						}
+					}
+					if (tmpCreep.length > 0) {
+						Arrays.sort(tmpCreep, (o1, o2) -> o1.id - o2.id);
+						money += updateAttack(tmpCreep, towers);
+					}
+				}
+				score = money + Arrays.stream(baseHealth).sum();
+			}
+			towers.clear();
+			step = 0;
+			creepIdMap.clear();
+			canPut = tmpPut;
+		}
+
+		int[] to(Creep[] creeps) {
+			int res[] = new int[creeps.length * 4];
+			for (int i = 0; i < creeps.length; ++i) {
+				res[i * 4] = creeps[i].id;
+				res[i * 4 + 1] = creeps[i].health;
+				res[i * 4 + 2] = getY(creeps[i].pos);
+				res[i * 4 + 3] = getX(creeps[i].pos);
+			}
+			return res;
+		}
 	}
 
 	private final int dist(final int pos1, final int pos2) {
@@ -223,44 +323,44 @@ public class PathDefense {
 		return dx * dx + dy * dy;
 	}
 
-	private final List<Tower> towers = new ArrayList<>();
-	// int testCount[];
-	private int step = 0;
-	Map<Integer, Creep> creepIdMap = new HashMap<>();
+	int attackValue[][] = new int[][] {//
+	{ -1, -1, -1, -1, -1, -1 },//0
+			{ -1, 0, 2, 1, 1, 1 },//1
+			{ -1, 7, 21, 5, 6, 22 },//2
+			{ -1, 58, 10, 82, 103, 94 },//3
+			{ -1, 1, 42, 55, 83, 170 },//4
+			{ -1, 58, 118, 205, 95, 159 },//5
+			{ -1, 172, 165, 167, 191, 207 },//6
+			{ -1, 19, 130, 78, 171, 205 },//7
+			{ -1, 1, 82, 39, 145, 206 } //8
+	};
+
+	int getBaseCount() {
+		return basep.length;
+	}
+
+	int getBestRange() {
+		return best.range1;
+	}
 
 	int[] placeTowers(int[] creep, int money, int[] baseHealth) {
+		Creep[] creeps = new Creep[creep.length / 4];
 		{// input
 			step++;
-			this.creeps = new Creep[creep.length / 4];
 			for (int i = 0; i < creep.length; i += 4) {
 				Creep c = new Creep(creep[i], creep[i + 1], pos(creep[i + 3], creep[i + 2]));
 				Creep t = creepIdMap.get(c.id);
 				if (t == null) {
-					this.creeps[i / 4] = c;
+					creeps[i / 4] = c;
 					creepIdMap.put(c.id, c);
 				} else {
 					t.update(c);
-					this.creeps[i / 4] = t;
+					creeps[i / 4] = t;
 				}
-				// ++testCount[creeps[i / 4].pos];
-				// debug("creep", creeps[i / 4].id, creeps[i / 4].health);
 			}
-			Arrays.sort(this.creeps, (o1, o2) -> o1.id - o2.id);
-			this.money = money;
+			Arrays.sort(creeps, (o1, o2) -> o1.id - o2.id);
 			this.baseHealth = baseHealth;
-			//			if (step == 1999) {
-			//				for (int i = 0; i < N; ++i) {
-			//					for (int j = 0; j < N; ++j) {
-			//						System.out.print(String.format("%3d ", testCount[pos(i, j)]));
-			//					}
-			//					System.out.println();
-			//				}
-			//				System.out.println();
-			//			}
 		}
-		//		debug("creep", creep);
-		//		debug("money", money);
-		//		debug("baseHealth", baseHealth);
 
 		class Simulation {
 			int income;
@@ -279,53 +379,6 @@ public class PathDefense {
 						break;
 					income += updateAttack(tmpCreep, towers);
 				}
-			}
-
-			Creep[] updateCreeps(final Creep creeps[], final List<Creep> goalCreep) {
-				Creep tmp[] = new Creep[creeps.length];
-				int i = 0;
-				for (Creep c : creeps) {
-					if (c.health <= 0)
-						continue;
-					int next = nextPosition(c);
-					if (base[next] >= 0) {
-						if (baseHealth[base[next]] > 0)
-							goalCreep.add(c);
-						continue;
-					}
-					c.pos = next;
-					tmp[i++] = c;
-				}
-				return Arrays.copyOf(tmp, i);
-			}
-
-			int updateAttack(final Creep creeps[], final Tower[] towers) {
-				int income = 0;
-				for (Tower t : towers) {
-					// search for nearest attackable creep
-					Creep def = null;
-					int cdist = t.t.range + 1;
-					for (Creep c : creeps) {
-						if (c.health > 0) {
-							int dst = dist(t.pos, c.pos);
-							// nearest creep?
-							if (dst < cdist) {
-								cdist = dst;
-								def = c;
-							}
-						}
-					}
-					if (def != null) {
-						// debugAlways(def.id, def.health, def.health - t.t.damage);
-						// we hit something
-						def.health -= t.t.damage;
-						if (def.health <= 0) {
-							// killed it!
-							income += creepMoney;
-						}
-					}
-				}
-				return income;
 			}
 		}
 
@@ -368,12 +421,8 @@ public class PathDefense {
 							++willKill;
 						}
 					}
-					int pv;
-					if (basep.length == 1) {
-						pv = (willKill << 10) + simpleValue[best.range1][p];
-					} else {
-						pv = (willKill << 10) + (willAttack << 6) + simpleValue[best.range1][p];
-					}
+					int pv = (willKill << 10) + (willAttack * attackValue[basep.length][best.range1])
+							+ simpleValue[best.range1][p];
 					if (willAttack > 0 && value < pv) {
 						value = pv;
 						index = i;
@@ -417,6 +466,51 @@ public class PathDefense {
 		return result(res);
 	}
 
+	Creep[] updateCreeps(final Creep creeps[], final List<Creep> goalCreep) {
+		Creep tmp[] = new Creep[creeps.length];
+		int i = 0;
+		for (Creep c : creeps) {
+			if (c.health <= 0)
+				continue;
+			c.pos = nextPosition(c);
+			if (base[c.pos] >= 0) {
+				if (baseHealth[base[c.pos]] > 0)
+					goalCreep.add(c);
+				continue;
+			}
+			tmp[i++] = c;
+		}
+		return Arrays.copyOf(tmp, i);
+	}
+
+	int updateAttack(final Creep creeps[], final Tower[] towers) {
+		int income = 0;
+		for (Tower t : towers) {
+			// search for nearest attackable creep
+			Creep def = null;
+			int cdist = t.t.range + 1;
+			for (Creep c : creeps) {
+				if (c.health > 0) {
+					int dst = dist(t.pos, c.pos);
+					// nearest creep?
+					if (cdist > dst) {
+						cdist = dst;
+						def = c;
+					}
+				}
+			}
+			if (def != null) {
+				// we hit something
+				def.health -= t.t.damage;
+				if (def.health <= 0) {
+					// killed it!
+					income += creepMoney;
+				}
+			}
+		}
+		return income;
+	}
+
 	private final int nextPosition(Creep c) {
 		final int pos = c.pos, dist[] = c.base, nowDist = dist[pos];
 		int next;
@@ -436,15 +530,6 @@ public class PathDefense {
 		if (0 <= next && dist[next] + 1 == nowDist) {
 			return next;
 		}
-		//		if (res == -1) {
-		//			for (int i = 0; i < N; i++) {
-		//				for (int j = 0; j < N; j++) {
-		//					System.out.print(String.format("%2d ", dist[pos(i, j)]));
-		//				}
-		//				System.out.println();
-		//			}
-		//			throw new RuntimeException();
-		//		}
 		throw new RuntimeException();
 	}
 
@@ -461,7 +546,7 @@ public class PathDefense {
 
 	private class Creep {
 		final int id;
-		int ih, ip;
+		int ih, ip, spawnTime;
 		int health, pos, bit = 0, base[];
 
 		Creep(int id, int health, int pos) {
@@ -476,10 +561,6 @@ public class PathDefense {
 			pos = ip;
 		}
 
-		/*
-		 * Creepの移動に関して、シミューレーションを寄せる
-		 * 具体的には、あるベースに近づかない移動をした場合は、そのベースが距離最短でも向かわない
-		 */
 		void update(final Creep c) {
 			ih = health = c.health;
 			base = null;
@@ -491,9 +572,9 @@ public class PathDefense {
 					base = tmp;
 				}
 			}
-			ip = pos = c.pos;
+			ip = pos = c.ip;
 			if (base == null) {
-				base = baseDist[minBaseId[pos]];
+				base = baseDist[minBaseId[ip]];
 			}
 		}
 	}
@@ -509,8 +590,6 @@ public class PathDefense {
 			this.damage = damage;
 			this.cost = cost;
 			value = (double) (range * damage) / cost;
-			// これはうまくいかない。何でかは分かってないから考察の価値はある
-			// value = (double) (range * range * damage) / cost;
 		}
 	}
 
@@ -551,6 +630,12 @@ public class PathDefense {
 		return res;
 	}
 
+	private final <T> T[] add(T[] src, T t) {
+		src = Arrays.copyOf(src, src.length + 1);
+		src[src.length - 1] = t;
+		return src;
+	}
+
 	private final int[] result(final List<Tower> res) {
 		int n = res.size() * 3;
 		int x[] = new int[n];
@@ -561,5 +646,31 @@ public class PathDefense {
 			x[i + 2] = t.type;
 		}
 		return x;
+	}
+
+	private final class XorShift {
+		int x = 123456789;
+		int y = 362436069;
+		int z = 521288629;
+		int w = 88675123;
+
+		int nextInt(int n) {
+			final int t = x ^ (x << 11);
+			x = y;
+			y = z;
+			z = w;
+			w = (w ^ (w >>> 19)) ^ (t ^ (t >>> 8));
+			final int r = w % n;
+			return r < 0 ? r + n : r;
+		}
+
+		int nextInt() {
+			final int t = x ^ (x << 11);
+			x = y;
+			y = z;
+			z = w;
+			w = (w ^ (w >>> 19)) ^ (t ^ (t >>> 8));
+			return w;
+		}
 	}
 }

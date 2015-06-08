@@ -809,8 +809,8 @@ public class PathDefenseVis {
 			}
 		} else {
 			vis = false;
-			// compare();
-			Optimization();
+			compare();
+			// Optimization();
 		}
 	}
 
@@ -821,7 +821,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper implements Solver {
-		CopyOfCopyOfCopyOfPathDefense solver = new CopyOfCopyOfCopyOfPathDefense();
+		PathDefense solver = new PathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
@@ -833,7 +833,7 @@ public class PathDefenseVis {
 	}
 
 	class Wrapper2 implements Solver {
-		PathDefense solver = new PathDefense();
+		CopyOfCopyOfPathDefense solver = new CopyOfCopyOfPathDefense();
 
 		public int init(String[] board, int money, int creepHealth, int creepMoney, int[] towerTypes) {
 			return solver.init(board, money, creepHealth, creepMoney, towerTypes);
@@ -848,7 +848,7 @@ public class PathDefenseVis {
 		@SuppressWarnings("unchecked")
 		final List<Integer> testCase[][] = new List[TestCase.MAX_BASE_COUNT + 1][TowerType.MAX_TOWER_RANGE + 1];
 		for (int i = 0; i < testCase.length; ++i)
-			for (int j = 0; j < TowerType.MAX_TOWER_RANGE; ++j)
+			for (int j = 0; j < testCase[i].length; ++j)
 				testCase[i][j] = new ArrayList<>();
 		ExecutorService es = Executors.newFixedThreadPool(32);
 		for (int seed = 1; seed <= 3000; ++seed) {
